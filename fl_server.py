@@ -4,7 +4,7 @@ from typing import List, Tuple
 import time
 
 
-# Get the parent directory
+
 parent_dir = os.path.dirname(os.path.realpath(__file__))
 print(parent_dir)
 # Add the parent directory to sys.path
