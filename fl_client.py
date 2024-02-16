@@ -144,7 +144,7 @@ class FlowerClient(fl.client.NumPyClient):
         self.threshold_loss = threshold_loss
         self.threshold_accuracy = threshold_accuracy
         self.perturb_rate = perturb_rate
-        
+
     def get_parameters(self, config):
         return [val.cpu().numpy() for _, val in net.state_dict().items()]
 
@@ -153,7 +153,19 @@ class FlowerClient(fl.client.NumPyClient):
         state_dict = OrderedDict({k: torch.tensor(v) for k, v in params_dict})
         net.load_state_dict(state_dict, strict=True)
 
+    # def fit(self, parameters, config):
+    #     self.set_parameters(parameters)
+    #     train(net, trainloader, epochs=1)
+    #     return self.get_parameters(config={}), len(trainloader.dataset), {}
+  
+    def perturb_parameters(self, parameters, perturb_rate):
+        # Implement parameter perturbation logic here
+        perturbed_parameters = [param + np.random.normal(scale=perturb_rate, size=param.shape) for param in parameters]
+        return perturbed_parameters
+
     def fit(self, parameters, config):
+        if self.perturb_rate > 0:
+            parameters = self.perturb_parameters(parameters, perturb_rate=self.perturb_rate)
         self.set_parameters(parameters)
         train(net, trainloader, epochs=1)
         return self.get_parameters(config={}), len(trainloader.dataset), {}
