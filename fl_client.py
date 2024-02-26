@@ -39,25 +39,49 @@ warnings.filterwarnings("ignore", category=UserWarning)
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
+# class Net(nn.Module):
+#     """Model (simple CNN adapted from 'PyTorch: A 60 Minute Blitz')"""
+
+#     def __init__(self) -> None:
+#         super(Net, self).__init__()
+#         self.conv1 = nn.Conv2d(3, 6, 5)
+#         self.pool = nn.MaxPool2d(2, 2)
+#         self.conv2 = nn.Conv2d(6, 16, 5)
+#         self.fc1 = nn.Linear(16 * 5 * 5, 120)
+#         self.fc2 = nn.Linear(120, 84)
+#         self.fc3 = nn.Linear(84, 10)
+
+#     def forward(self, x: torch.Tensor) -> torch.Tensor:
+#         x = self.pool(F.relu(self.conv1(x)))
+#         x = self.pool(F.relu(self.conv2(x)))
+#         x = x.view(-1, 16 * 5 * 5)
+#         x = F.relu(self.fc1(x))
+#         x = F.relu(self.fc2(x))
+#         return self.fc3(x)
+
 class Net(nn.Module):
-    """Model (simple CNN adapted from 'PyTorch: A 60 Minute Blitz')"""
-
-    def __init__(self) -> None:
+    def __init__(self):
         super(Net, self).__init__()
-        self.conv1 = nn.Conv2d(3, 6, 5)
-        self.pool = nn.MaxPool2d(2, 2)
-        self.conv2 = nn.Conv2d(6, 16, 5)
-        self.fc1 = nn.Linear(16 * 5 * 5, 120)
-        self.fc2 = nn.Linear(120, 84)
-        self.fc3 = nn.Linear(84, 10)
+        self.conv1 = nn.Conv2d(1, 32, 3, 1)  # Assuming this is for MNIST
+        self.conv2 = nn.Conv2d(32, 64, 3, 1)
+        self.dropout1 = nn.Dropout2d(0.25)
+        self.dropout2 = nn.Dropout2d(0.5)
+        # Adjusted to match the actual size
+        self.fc1 = nn.Linear(1600, 128)  # Adjusted from 9216 to 1600
+        self.fc2 = nn.Linear(128, 10)
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        x = self.pool(F.relu(self.conv1(x)))
-        x = self.pool(F.relu(self.conv2(x)))
-        x = x.view(-1, 16 * 5 * 5)
+    def forward(self, x):
+        # Convolutional and pooling layers unchanged
+        x = F.relu(F.max_pool2d(self.conv1(x), 2))
+        x = F.relu(F.max_pool2d(self.conv2(x), 2))
+        x = self.dropout1(x)
+        x = torch.flatten(x, 1)
+        # Fully connected layers adjusted
         x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
-        return self.fc3(x)
+        x = self.dropout2(x)
+        x = self.fc2(x)
+        output = F.log_softmax(x, dim=1)
+        return output
 
 
 def train(net, trainloader, epochs):
@@ -109,17 +133,30 @@ def test(net, testloader):
 #         dataset.targets[i] = y
 #     return dataset
 
-def load_data(data_path, poison_rate):
-    trf = Compose([ToTensor(), Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
-    trainset = CIFAR10(data_path, train=True, download=True, transform=trf)
-    testset = CIFAR10(data_path, train=False, download=True, transform=trf)
+# def load_data(data_path, poison_rate):
+#     trf = Compose([ToTensor(), Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+#     trainset = CIFAR10(data_path, train=True, download=True, transform=trf)
+#     testset = CIFAR10(data_path, train=False, download=True, transform=trf)
     
+#     if poison_rate > 0:
+#         # Assuming you have a function to poison the dataset
+#         trainset = poison_CIFAR10_dataset(trainset, poison_rate=poison_rate)
+    
+#     return DataLoader(trainset, batch_size=32, shuffle=True), DataLoader(testset)
+
+def load_data(data_path, poison_rate=0.0):
+    trf = Compose([ToTensor(), Normalize((0.1307,), (0.3081,))])  # Normalization for MNIST
+    trainset = MNIST(data_path, train=True, download=True, transform=trf)
+    testset = MNIST(data_path, train=False, download=True, transform=trf)
+    # trainset = FashionMNIST(data_path, train=True, download=True, transform=trf)
+    # testset = FashionMNIST(data_path, train=False, download=True, transform=trf)
+    
+    # Apply dataset poisoning logic here if poison_rate > 0
     if poison_rate > 0:
-        # Assuming you have a function to poison the dataset
-        trainset = poison_CIFAR10_dataset(trainset, poison_rate=poison_rate)
+        # trainset = poison_FMNIST_dataset(trainset, poison_rate=poison_rate)
+        trainset = poison_MNIST_dataset(trainset, poison_rate=poison_rate)
     
     return DataLoader(trainset, batch_size=32, shuffle=True), DataLoader(testset)
-
 
 
 # #############################################################################
